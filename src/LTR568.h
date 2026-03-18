@@ -17,8 +17,8 @@ NOTE: Where the datasheet and the reference C implementation
 *****************************************************************************
 */
 
-#ifndef __PROXIMITY_ALS_H__
-#define __PROXIMITY_ALS_H__
+#ifndef __LTR568_H__
+#define __LTR568_H__
 
 #include "I2CUtils/i2c-register.hpp"
 #include <stdint.h>
@@ -318,11 +318,11 @@ NOTE: Where the datasheet and the reference C implementation
 /* Class definition                                                       */
 /* ═══════════════════════════════════════════════════════════════════════ */
 
-class ProximityAL : public I2CDevice
+class LTR568 : public I2CDevice
 {
 public:
-    ProximityAL(void);
-    ProximityAL(uint8_t i2c_address);
+    LTR568(void);
+    LTR568(uint8_t i2c_address);
 
     /**
      * @brief  Initialise the sensor following datasheet §9.3 sequence.
@@ -374,6 +374,8 @@ public:
 
     /* === Identification =============================================== */
 
+    /** @brief Read raw PART_ID register (0x86). Usable before begin(). */
+    uint8_t readPartID(void) { return read8(LTR568_PART_ID_REG); }
     uint8_t getPartNumberID(void);
     uint8_t getRevisionID(void);
     uint8_t getManufacturerID(void);
@@ -413,4 +415,4 @@ private:
     float _windowFactor;
 };
 
-#endif /* __PROXIMITY_ALS_H__ */
+#endif /* __LTR568_H__ */

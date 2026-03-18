@@ -6,7 +6,7 @@
 # Class (KEYWORD1)
 ####################################
 
-ProximityAL	KEYWORD1
+LTR568	KEYWORD1
 
 #######################################
 # Methods and Functions (KEYWORD2)
