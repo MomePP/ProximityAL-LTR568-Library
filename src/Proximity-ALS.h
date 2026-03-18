@@ -20,51 +20,40 @@ NOTE: Where the datasheet and the reference C implementation
 #ifndef __PROXIMITY_ALS_H__
 #define __PROXIMITY_ALS_H__
 
-#include <stdint.h>
 #include "I2CUtils/i2c-register.hpp"
-
-/* ── Logging ───────────────────────────────────────────────────────────── */
-#if defined(ARDUINO_ARCH_ESP32)
-#include "esp32-hal-log.h"
-#else
-/* Stub macros for non-ESP32 platforms */
-#define log_i(format, ...)
-#define log_d(format, ...)
-#define log_w(format, ...)
-#define log_e(format, ...)
-#endif
+#include <stdint.h>
 
 /* ── I2C Address ───────────────────────────────────────────────────────── */
-#define LTR568_ADDR 0x23
+#define LTR568_ADDR                0x23
 
 /* ── Register Map ──────────────────────────────────────────────────────── */
-#define LTR568_ALS_AVE_LIMIT_REG    0x7E
-#define LTR568_ALS_AVE_FAC_REG      0x7F
-#define LTR568_ALS_CONTR_REG        0x80
-#define LTR568_PS_CONTR_REG         0x81
-#define LTR568_PS_LED_REG           0x82
-#define LTR568_PS_N_PULSES_REG      0x83
-#define LTR568_PS_MEAS_RATE_REG     0x84
-#define LTR568_ALS_INT_TIME_REG     0x85
-#define LTR568_PART_ID_REG          0x86
-#define LTR568_MANUFAC_ID_REG       0x87
-#define LTR568_ALS_STATUS_REG       0x88
-#define LTR568_IR_DATA_LSB_REG      0x89
-#define LTR568_IR_DATA_MSB_REG      0x8A
-#define LTR568_GREEN_DATA_LSB_REG   0x8B
-#define LTR568_GREEN_DATA_MSB_REG   0x8C
-#define LTR568_PS_STATUS_REG        0x91
-#define LTR568_PS_DATA_LSB_REG      0x92
-#define LTR568_PS_DATA_MSB_REG      0x93
-#define LTR568_INTERRUPT_REG        0x98
-#define LTR568_INT_PERSIST_REG      0x99
-#define LTR568_PS_THRES_HI_LSB_REG  0x9A
-#define LTR568_PS_THRES_HI_MSB_REG  0x9B
-#define LTR568_PS_THRES_LO_LSB_REG  0x9C
-#define LTR568_PS_THRES_LO_MSB_REG  0x9D
-#define LTR568_PXTALK_LSB_REG       0x9E
-#define LTR568_PXTALK_MSB_REG       0x9F
-#define LTR568_PS_VREHL_REG         0xB6
+#define LTR568_ALS_AVE_LIMIT_REG   0x7E
+#define LTR568_ALS_AVE_FAC_REG     0x7F
+#define LTR568_ALS_CONTR_REG       0x80
+#define LTR568_PS_CONTR_REG        0x81
+#define LTR568_PS_LED_REG          0x82
+#define LTR568_PS_N_PULSES_REG     0x83
+#define LTR568_PS_MEAS_RATE_REG    0x84
+#define LTR568_ALS_INT_TIME_REG    0x85
+#define LTR568_PART_ID_REG         0x86
+#define LTR568_MANUFAC_ID_REG      0x87
+#define LTR568_ALS_STATUS_REG      0x88
+#define LTR568_IR_DATA_LSB_REG     0x89
+#define LTR568_IR_DATA_MSB_REG     0x8A
+#define LTR568_GREEN_DATA_LSB_REG  0x8B
+#define LTR568_GREEN_DATA_MSB_REG  0x8C
+#define LTR568_PS_STATUS_REG       0x91
+#define LTR568_PS_DATA_LSB_REG     0x92
+#define LTR568_PS_DATA_MSB_REG     0x93
+#define LTR568_INTERRUPT_REG       0x98
+#define LTR568_INT_PERSIST_REG     0x99
+#define LTR568_PS_THRES_HI_LSB_REG 0x9A
+#define LTR568_PS_THRES_HI_MSB_REG 0x9B
+#define LTR568_PS_THRES_LO_LSB_REG 0x9C
+#define LTR568_PS_THRES_LO_MSB_REG 0x9D
+#define LTR568_PXTALK_LSB_REG      0x9E
+#define LTR568_PXTALK_MSB_REG      0x9F
+#define LTR568_PS_VREHL_REG        0xB6
 
 /* ── Expected ID Values ────────────────────────────────────────────────── */
 /*
@@ -72,8 +61,8 @@ NOTE: Where the datasheet and the reference C implementation
  *   REF_IMPL_DIFF: the AliOS driver uses LTR568_PART_ID_VAL = 0.
  *   Trust the datasheet.
  */
-#define LTR568_PART_ID_EXPECTED     0x1C
-#define LTR568_MANUFAC_ID_EXPECTED  0x08
+#define LTR568_PART_ID_EXPECTED    0x1C
+#define LTR568_MANUFAC_ID_EXPECTED 0x08
 
 /* ═══════════════════════════════════════════════════════════════════════ */
 /* ALS_CONTR (0x80) — default 0x20                                        */
@@ -86,30 +75,30 @@ NOTE: Where the datasheet and the reference C implementation
 /* ═══════════════════════════════════════════════════════════════════════ */
 
 /* ALS Mode (bit 0) */
-#define ALS_ACTIVE_MODE             0x01
-#define ALS_STANDBY_MODE            0x00
-#define ALS_MODE_MASK               0x01
+#define ALS_ACTIVE_MODE            0x01
+#define ALS_STANDBY_MODE           0x00
+#define ALS_MODE_MASK              0x01
 
 /* ALS Gain (bits 4:2) */
-#define ALS_GAIN_1X                 (0x00 << 2)
-#define ALS_GAIN_4X                 (0x01 << 2)
-#define ALS_GAIN_16X                (0x02 << 2)
-#define ALS_GAIN_64X                (0x03 << 2)
-#define ALS_GAIN_128X               (0x04 << 2)
-#define ALS_GAIN_512X               (0x05 << 2)
-#define ALS_GAIN_MASK               0x1C
+#define ALS_GAIN_1X                (0x00 << 2)
+#define ALS_GAIN_4X                (0x01 << 2)
+#define ALS_GAIN_16X               (0x02 << 2)
+#define ALS_GAIN_64X               (0x03 << 2)
+#define ALS_GAIN_128X              (0x04 << 2)
+#define ALS_GAIN_512X              (0x05 << 2)
+#define ALS_GAIN_MASK              0x1C
 
 /* IR Enable (bit 5) */
-#define ALS_IR_ENABLE               (0x01 << 5)
-#define ALS_IR_DISABLE              (0x00 << 5)
-#define ALS_IR_EN_MASK              0x20
+#define ALS_IR_ENABLE              (0x01 << 5)
+#define ALS_IR_DISABLE             (0x00 << 5)
+#define ALS_IR_EN_MASK             0x20
 
 /* ALS ADC Resolution (bits 7:6) */
-#define ALS_DR_16BIT                (0x00 << 6)
-#define ALS_DR_15BIT                (0x01 << 6)
-#define ALS_DR_14BIT                (0x02 << 6)
-#define ALS_DR_13BIT                (0x03 << 6)
-#define ALS_DR_MASK                 0xC0
+#define ALS_DR_16BIT               (0x00 << 6)
+#define ALS_DR_15BIT               (0x01 << 6)
+#define ALS_DR_14BIT               (0x02 << 6)
+#define ALS_DR_13BIT               (0x03 << 6)
+#define ALS_DR_MASK                0xC0
 
 /* ═══════════════════════════════════════════════════════════════════════ */
 /* PS_CONTR (0x81) — default 0x10                                         */
@@ -123,27 +112,27 @@ NOTE: Where the datasheet and the reference C implementation
 /* ═══════════════════════════════════════════════════════════════════════ */
 
 /* Reserved bit 4 — MUST always be 1 in every PS_CONTR write */
-#define PS_CONTR_RSVD_BIT4          0x10
+#define PS_CONTR_RSVD_BIT4         0x10
 
 /* PS Mode (bit 1) */
-#define PS_ACTIVE_MODE              (0x01 << 1)
-#define PS_STANDBY_MODE             (0x00 << 1)
-#define PS_MODE_MASK                0x02
+#define PS_ACTIVE_MODE             (0x01 << 1)
+#define PS_STANDBY_MODE            (0x00 << 1)
+#define PS_MODE_MASK               0x02
 
 /* SW Reset (bit 0) — resets ALL registers, returns to standby */
-#define PS_SW_RESET                 0x01
+#define PS_SW_RESET                0x01
 
 /* PS Offset Subtraction (bit 3) */
-#define PS_OFFSET_EN                (0x01 << 3)
-#define PS_OFFSET_MASK              0x08
+#define PS_OFFSET_EN               (0x01 << 3)
+#define PS_OFFSET_MASK             0x08
 
 /* FTN/NTF Direction Reporting (bit 2) */
-#define PS_FTN_NTF_EN               (0x01 << 2)
-#define PS_FTN_NTF_MASK             0x04
+#define PS_FTN_NTF_EN              (0x01 << 2)
+#define PS_FTN_NTF_MASK            0x04
 
 /* PS 16-bit Output (bit 5) — default is 11-bit */
-#define PS_16BIT_EN                 (0x01 << 5)
-#define PS_16BIT_MASK               0x20
+#define PS_16BIT_EN                (0x01 << 5)
+#define PS_16BIT_MASK              0x20
 
 /* ═══════════════════════════════════════════════════════════════════════ */
 /* PS_LED (0x82) — default 0x7A                                           */
@@ -154,29 +143,29 @@ NOTE: Where the datasheet and the reference C implementation
 /* ═══════════════════════════════════════════════════════════════════════ */
 
 /* LED Current (bits 2:0) */
-#define PS_LED_CURRENT_0MA          0x00
-#define PS_LED_CURRENT_50MA         0x01
-#define PS_LED_CURRENT_100MA        0x02
-#define PS_LED_CURRENT_120MA        0x03
-#define PS_LED_CURRENT_140MA        0x04
-#define PS_LED_CURRENT_170MA        0x05
-#define PS_LED_CURRENT_190MA        0x06
-#define PS_LED_CURRENT_240MA        0x07
-#define PS_LED_CURRENT_MASK         0x07
+#define PS_LED_CURRENT_0MA         0x00
+#define PS_LED_CURRENT_50MA        0x01
+#define PS_LED_CURRENT_100MA       0x02
+#define PS_LED_CURRENT_120MA       0x03
+#define PS_LED_CURRENT_140MA       0x04
+#define PS_LED_CURRENT_170MA       0x05
+#define PS_LED_CURRENT_190MA       0x06
+#define PS_LED_CURRENT_240MA       0x07
+#define PS_LED_CURRENT_MASK        0x07
 
 /* LED Pulse Width (bits 4:3) */
-#define PS_LED_PULSE_WIDTH_4US      (0x00 << 3)
-#define PS_LED_PULSE_WIDTH_8US      (0x01 << 3)
-#define PS_LED_PULSE_WIDTH_16US     (0x02 << 3)
-#define PS_LED_PULSE_WIDTH_32US     (0x03 << 3)
-#define PS_LED_PULSE_WIDTH_MASK     0x18
+#define PS_LED_PULSE_WIDTH_4US     (0x00 << 3)
+#define PS_LED_PULSE_WIDTH_8US     (0x01 << 3)
+#define PS_LED_PULSE_WIDTH_16US    (0x02 << 3)
+#define PS_LED_PULSE_WIDTH_32US    (0x03 << 3)
+#define PS_LED_PULSE_WIDTH_MASK    0x18
 
 /* LED Pulse Duty Cycle (bits 6:5) */
-#define PS_LED_DUTY_12_5PCT         (0x00 << 5)
-#define PS_LED_DUTY_25PCT           (0x01 << 5)
-#define PS_LED_DUTY_50PCT           (0x02 << 5)
-#define PS_LED_DUTY_100PCT          (0x03 << 5)
-#define PS_LED_DUTY_MASK            0x60
+#define PS_LED_DUTY_12_5PCT        (0x00 << 5)
+#define PS_LED_DUTY_25PCT          (0x01 << 5)
+#define PS_LED_DUTY_50PCT          (0x02 << 5)
+#define PS_LED_DUTY_100PCT         (0x03 << 5)
+#define PS_LED_DUTY_MASK           0x60
 
 /* ═══════════════════════════════════════════════════════════════════════ */
 /* PS_N_PULSES (0x83) — default 0x00                                      */
@@ -185,14 +174,14 @@ NOTE: Where the datasheet and the reference C implementation
 /*   bit[7:6] PS_AVG_FACTOR    00=none  01=2×  10=4×  11=8×              */
 /* ═══════════════════════════════════════════════════════════════════════ */
 
-#define PS_PULSE_COUNT_MASK         0x1F
+#define PS_PULSE_COUNT_MASK        0x1F
 
 /* PS Averaging Factor (bits 7:6) */
-#define PS_AVG_NONE                 (0x00 << 6)
-#define PS_AVG_2X                   (0x01 << 6)
-#define PS_AVG_4X                   (0x02 << 6)
-#define PS_AVG_8X                   (0x03 << 6)
-#define PS_AVG_MASK                 0xC0
+#define PS_AVG_NONE                (0x00 << 6)
+#define PS_AVG_2X                  (0x01 << 6)
+#define PS_AVG_4X                  (0x02 << 6)
+#define PS_AVG_8X                  (0x03 << 6)
+#define PS_AVG_MASK                0xC0
 
 /* ═══════════════════════════════════════════════════════════════════════ */
 /* PS_MEAS_RATE (0x84) — default 0x04                                     */
@@ -200,15 +189,15 @@ NOTE: Where the datasheet and the reference C implementation
 /*   bit[7:3] Reserved — must write 00000                                 */
 /* ═══════════════════════════════════════════════════════════════════════ */
 
-#define PS_MEAS_RATE_6_125MS        0x00
-#define PS_MEAS_RATE_12_5MS         0x01
-#define PS_MEAS_RATE_25MS           0x02
-#define PS_MEAS_RATE_50MS           0x03
-#define PS_MEAS_RATE_100MS          0x04
-#define PS_MEAS_RATE_200MS          0x05
-#define PS_MEAS_RATE_400MS          0x06
-#define PS_MEAS_RATE_800MS          0x07
-#define PS_MEAS_RATE_MASK           0x07
+#define PS_MEAS_RATE_6_125MS       0x00
+#define PS_MEAS_RATE_12_5MS        0x01
+#define PS_MEAS_RATE_25MS          0x02
+#define PS_MEAS_RATE_50MS          0x03
+#define PS_MEAS_RATE_100MS         0x04
+#define PS_MEAS_RATE_200MS         0x05
+#define PS_MEAS_RATE_400MS         0x06
+#define PS_MEAS_RATE_800MS         0x07
+#define PS_MEAS_RATE_MASK          0x07
 
 /* ═══════════════════════════════════════════════════════════════════════ */
 /* ALS_INT_TIME (0x85) — default 0x06                                     */
@@ -228,18 +217,18 @@ NOTE: Where the datasheet and the reference C implementation
 /* ═══════════════════════════════════════════════════════════════════════ */
 
 /* ALS Integration Time (bits 3:2) */
-#define ALS_INT_TIME_50MS           (0x00 << 2)
-#define ALS_INT_TIME_100MS          (0x01 << 2)
-#define ALS_INT_TIME_200MS          (0x02 << 2)
-#define ALS_INT_TIME_400MS          (0x03 << 2)
-#define ALS_INT_TIME_MASK           0x0C
+#define ALS_INT_TIME_50MS          (0x00 << 2)
+#define ALS_INT_TIME_100MS         (0x01 << 2)
+#define ALS_INT_TIME_200MS         (0x02 << 2)
+#define ALS_INT_TIME_400MS         (0x03 << 2)
+#define ALS_INT_TIME_MASK          0x0C
 
 /* ALS Measurement Rate (bits 1:0) */
-#define ALS_MEAS_RATE_100MS         0x00
-#define ALS_MEAS_RATE_200MS         0x01
-#define ALS_MEAS_RATE_400MS         0x02
-#define ALS_MEAS_RATE_800MS         0x03
-#define ALS_MEAS_RATE_MASK          0x03
+#define ALS_MEAS_RATE_100MS        0x00
+#define ALS_MEAS_RATE_200MS        0x01
+#define ALS_MEAS_RATE_400MS        0x02
+#define ALS_MEAS_RATE_800MS        0x03
+#define ALS_MEAS_RATE_MASK         0x03
 
 /* ═══════════════════════════════════════════════════════════════════════ */
 /* ALS_STATUS (0x88) — read only                                          */
@@ -255,10 +244,10 @@ NOTE: Where the datasheet and the reference C implementation
 /*   ► Trust the datasheet.                                               */
 /* ═══════════════════════════════════════════════════════════════════════ */
 
-#define ALS_DATA_VALID_MASK         0x40    /* bit 6: 0=valid, 1=invalid */
-#define ALS_DATA_GAIN_MASK          0x38    /* bits 5:3 */
-#define ALS_DATA_GAIN_SHIFT         3
-#define ALS_DATA_STATUS_MASK        0x01    /* bit 0: 0=old, 1=new */
+#define ALS_DATA_VALID_MASK        0x40 /* bit 6: 0=valid, 1=invalid */
+#define ALS_DATA_GAIN_MASK         0x38 /* bits 5:3 */
+#define ALS_DATA_GAIN_SHIFT        3
+#define ALS_DATA_STATUS_MASK       0x01 /* bit 0: 0=old, 1=new */
 
 /* ═══════════════════════════════════════════════════════════════════════ */
 /* PS_STATUS (0x91) — read only, default 0x08                             */
@@ -271,18 +260,18 @@ NOTE: Where the datasheet and the reference C implementation
 /*   bit[7:6] Reserved                                                    */
 /* ═══════════════════════════════════════════════════════════════════════ */
 
-#define PS_FTN_MASK                 0x20    /* bit 5 */
-#define PS_NTF_MASK                 0x10    /* bit 4 */
-#define PS_AMB_SAT_MASK             0x04    /* bit 2 */
-#define PS_INT_STATUS_MASK          0x02    /* bit 1 */
-#define PS_DATA_STATUS_MASK         0x01    /* bit 0 */
+#define PS_FTN_MASK                0x20 /* bit 5 */
+#define PS_NTF_MASK                0x10 /* bit 4 */
+#define PS_AMB_SAT_MASK            0x04 /* bit 2 */
+#define PS_INT_STATUS_MASK         0x02 /* bit 1 */
+#define PS_DATA_STATUS_MASK        0x01 /* bit 0 */
 
 /* ═══════════════════════════════════════════════════════════════════════ */
 /* PART_ID (0x86) — read only                                             */
 /* ═══════════════════════════════════════════════════════════════════════ */
 
-#define PART_NUMBER_ID_MASK         0xF0
-#define REVISION_ID_MASK            0x0F
+#define PART_NUMBER_ID_MASK        0xF0
+#define REVISION_ID_MASK           0x0F
 
 /* ═══════════════════════════════════════════════════════════════════════ */
 /* INTERRUPT (0x98) — default 0x08                                        */
@@ -296,9 +285,9 @@ NOTE: Where the datasheet and the reference C implementation
 /*   ► Trust the field table.  Use 0x08 base.                             */
 /* ═══════════════════════════════════════════════════════════════════════ */
 
-#define INT_BASE                    0x08    /* reserved bit3=1 */
-#define INT_MODE_PS_TRIGGER         0x01    /* bit 0 */
-#define INT_POLARITY_HIGH           0x04    /* bit 2 */
+#define INT_BASE                   0x08 /* reserved bit3=1 */
+#define INT_MODE_PS_TRIGGER        0x01 /* bit 0 */
+#define INT_POLARITY_HIGH          0x04 /* bit 2 */
 
 /* ═══════════════════════════════════════════════════════════════════════ */
 /* INTERRUPT_PERSIST (0x99) — default 0x00                                */
@@ -306,14 +295,14 @@ NOTE: Where the datasheet and the reference C implementation
 /*   bit[3:0] Reserved         must write 0000                           */
 /* ═══════════════════════════════════════════════════════════════════════ */
 
-#define INT_PERSIST_MASK            0xF0
+#define INT_PERSIST_MASK           0xF0
 
 /* ═══════════════════════════════════════════════════════════════════════ */
 /* Lux formula (datasheet §8)                                             */
 /*   Lux = (0.336 × ALS_DATA) / (GAIN × INT) × Window_Factor             */
 /* ═══════════════════════════════════════════════════════════════════════ */
 
-#define LTR568_LUX_COEFF            0.336f
+#define LTR568_LUX_COEFF           0.336f
 
 /* ═══════════════════════════════════════════════════════════════════════ */
 /* PS_VREHL (0xB6) — sunlight fail-safe                                   */
@@ -323,7 +312,7 @@ NOTE: Where the datasheet and the reference C implementation
 /*   ► Use 0x06 (field table).                                            */
 /* ═══════════════════════════════════════════════════════════════════════ */
 
-#define PS_VREHL_RECOMMENDED        0x06
+#define PS_VREHL_RECOMMENDED       0x06
 
 /* ═══════════════════════════════════════════════════════════════════════ */
 /* Class definition                                                       */
@@ -394,7 +383,7 @@ public:
     uint16_t getPSvalue(void);
     uint16_t getGreenValue(void);
     uint16_t getIRvalue(void);
-    float    getLuxValue(void);
+    float getLuxValue(void);
 
     /**
      * @brief  Set window factor for lux calculation.
@@ -405,9 +394,9 @@ public:
 
     /* === Status ======================================================= */
 
-    bool    isALSdataNew(void);
-    bool    isALSdataValid(void);
-    bool    isPSdataNew(void);
+    bool isALSdataNew(void);
+    bool isALSdataValid(void);
+    bool isPSdataNew(void);
     uint8_t getALSstatusGain(void);
     uint8_t getPSstatus(void);
 
@@ -421,7 +410,7 @@ public:
 
 private:
     uint8_t _address;
-    float   _windowFactor;
+    float _windowFactor;
 };
 
 #endif /* __PROXIMITY_ALS_H__ */

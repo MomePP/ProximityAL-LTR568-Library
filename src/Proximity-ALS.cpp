@@ -15,11 +15,6 @@ Library includes:
 --> Data reading functions
 --> Lux conversion (datasheet §8 formula)
 --> I2C communication via I2CUtils
-
-NOTE: This library uses the Arduino-ESP32 log macros (log_i, log_d,
-      log_w, log_e) for debug output.  Set CORE_DEBUG_LEVEL in your
-      build flags to control verbosity.  On non-ESP32 platforms the
-      macros are stubbed out.
 *****************************************************************************
 */
 
@@ -69,34 +64,13 @@ bool ProximityAL::begin(void)
     if (Wire.endTransmission() == 0)
     {
         deviceExists = true;
-        log_i("[LTR568] device found at 0x%02X", _address);
 
         /* Step 2 — post-power-up delay */
         delay(10);
 
-        /* Steps 3–4 — verify identity */
-        uint8_t partId = read8(LTR568_PART_ID_REG);
-        uint8_t manufacId = read8(LTR568_MANUFAC_ID_REG);
-
-        log_d("[LTR568] PART_ID=0x%02X (expected 0x%02X), MANUFAC_ID=0x%02X (expected 0x%02X)",
-              partId, LTR568_PART_ID_EXPECTED, manufacId, LTR568_MANUFAC_ID_EXPECTED);
-
-        /*
-         * REF_IMPL_DIFF: the AliOS driver expects PART_ID = 0x00.
-         * Datasheet says 0x1C.  Warn but don't fail — let the
-         * user decide whether the mismatch matters on their silicon.
-         */
-        if (partId != LTR568_PART_ID_EXPECTED)
-        {
-            log_w("[LTR568] unexpected PART_ID 0x%02X (datasheet says 0x%02X, "
-                  "ref C impl says 0x00) — continuing anyway",
-                  partId, LTR568_PART_ID_EXPECTED);
-        }
-        if (manufacId != LTR568_MANUFAC_ID_EXPECTED)
-        {
-            log_w("[LTR568] unexpected MANUFAC_ID 0x%02X (expected 0x%02X)",
-                  manufacId, LTR568_MANUFAC_ID_EXPECTED);
-        }
+        /* Steps 3–4 — read identity registers (triggers internal latch) */
+        read8(LTR568_PART_ID_REG);
+        read8(LTR568_MANUFAC_ID_REG);
 
         /* ── Configure ALL registers BEFORE activating modes ────────── */
 
@@ -106,17 +80,18 @@ bool ProximityAL::begin(void)
          */
         write_register(LTR568_PS_VREHL_REG, PS_VREHL_RECOMMENDED);
 
-        /* Step 6 — PS LED: 100% duty, 32 µs pulse width, 100 mA
-         *   (matches default reset value 0x7A)
+        /* Step 6 — PS LED: 100% duty, 32 µs pulse width, 190 mA
+         *   Datasheet §4.5: max detection distance 8 cm at 32 µs / 7 pulses / 190 mA.
+         *   190 mA gives best range within the datasheet's rated spec.
          */
         write_register(LTR568_PS_LED_REG,
-                       PS_LED_DUTY_100PCT | PS_LED_PULSE_WIDTH_32US | PS_LED_CURRENT_100MA);
+                       PS_LED_DUTY_100PCT | PS_LED_PULSE_WIDTH_32US | PS_LED_CURRENT_190MA);
 
-        /* Step 7 — PS pulses: 7 pulses (reg value 0x06 = 7th pulse), no averaging
+        /* Step 7 — PS pulses: 16 pulses (reg value 0x0F), no averaging
          *   Datasheet §7.6: pulse count 0x00=1 .. 0x1F=32.
-         *   7 pulses chosen for good balance of range vs power.
+         *   16 pulses improves SNR by ~1.5× over 7 pulses (sqrt(16/7)).
          */
-        write_register(LTR568_PS_N_PULSES_REG, PS_AVG_NONE | 0x06);
+        write_register(LTR568_PS_N_PULSES_REG, PS_AVG_NONE | 0x0F);
 
         /* Step 8 — PS measurement rate: 100 ms (default) */
         write_register(LTR568_PS_MEAS_RATE_REG, PS_MEAS_RATE_100MS);
@@ -141,12 +116,6 @@ bool ProximityAL::begin(void)
 
         /* Wait for first measurement to become available (§4.3: 5–10 ms) */
         delay(10);
-
-        log_i("[LTR568] initialised — ALS active (gain=1x, 100ms), PS active (7 pulses, 100mA)");
-    }
-    else
-    {
-        log_e("[LTR568] device not found at 0x%02X", _address);
     }
 
     return deviceExists;
@@ -161,10 +130,8 @@ bool ProximityAL::begin(void)
 
 void ProximityAL::softwareReset(void)
 {
-    log_d("[LTR568] software reset — all registers will return to defaults");
     write_register(LTR568_PS_CONTR_REG, PS_CONTR_RSVD_BIT4 | PS_SW_RESET);
     delay(10);
-    log_d("[LTR568] reset complete — sensor in standby, re-init required");
 }
 
 /* ═══════════════════════════════════════════════════════════════════════ */
@@ -180,7 +147,6 @@ void ProximityAL::setALSmode(uint8_t mode)
     uint8_t reg = read8(LTR568_ALS_CONTR_REG);
     reg = (reg & ~ALS_MODE_MASK) | (mode & ALS_MODE_MASK);
     write_register(LTR568_ALS_CONTR_REG, reg);
-    log_d("[LTR568] ALS mode=%s", (mode & ALS_MODE_MASK) ? "active" : "standby");
 }
 
 /**
@@ -192,7 +158,6 @@ void ProximityAL::setALSgain(uint8_t gain)
     uint8_t reg = read8(LTR568_ALS_CONTR_REG);
     reg = (reg & ~ALS_GAIN_MASK) | (gain & ALS_GAIN_MASK);
     write_register(LTR568_ALS_CONTR_REG, reg);
-    log_d("[LTR568] ALS gain=0x%02X", gain);
 }
 
 /**
@@ -213,7 +178,6 @@ void ProximityAL::setALSresolution(uint8_t resolution)
     uint8_t reg = read8(LTR568_ALS_CONTR_REG);
     reg = (reg & ~ALS_DR_MASK) | (resolution & ALS_DR_MASK);
     write_register(LTR568_ALS_CONTR_REG, reg);
-    log_d("[LTR568] ALS resolution=0x%02X", resolution);
 }
 
 /**
@@ -225,7 +189,6 @@ void ProximityAL::setIRenable(bool enable)
     uint8_t reg = read8(LTR568_ALS_CONTR_REG);
     reg = (reg & ~ALS_IR_EN_MASK) | (enable ? ALS_IR_ENABLE : ALS_IR_DISABLE);
     write_register(LTR568_ALS_CONTR_REG, reg);
-    log_d("[LTR568] IR channel %s", enable ? "enabled" : "disabled");
 }
 
 /**
@@ -240,7 +203,6 @@ void ProximityAL::setALSintegrationTime(uint8_t intTime)
     reg = (reg & ~ALS_INT_TIME_MASK) | (intTime & ALS_INT_TIME_MASK);
     reg &= 0x0F; /* upper nibble must be 0x0 per pseudo-code */
     write_register(LTR568_ALS_INT_TIME_REG, reg);
-    log_d("[LTR568] ALS integration time=0x%02X", intTime);
 }
 
 /**
@@ -263,7 +225,6 @@ void ProximityAL::setALSmeasurementRate(uint8_t measRate)
     reg = (reg & ~ALS_MEAS_RATE_MASK) | (measRate & ALS_MEAS_RATE_MASK);
     reg &= 0x0F; /* upper nibble must be 0x0 per pseudo-code */
     write_register(LTR568_ALS_INT_TIME_REG, reg);
-    log_d("[LTR568] ALS meas rate=0x%02X", measRate);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════ */
@@ -282,7 +243,6 @@ void ProximityAL::setPSmode(uint8_t mode)
     reg = (reg & ~PS_MODE_MASK) | (mode & PS_MODE_MASK);
     reg |= PS_CONTR_RSVD_BIT4;
     write_register(LTR568_PS_CONTR_REG, reg);
-    log_d("[LTR568] PS mode=%s", (mode & PS_MODE_MASK) ? "active" : "standby");
 }
 
 /**
@@ -294,7 +254,6 @@ void ProximityAL::setPSledCurrent(uint8_t current)
     uint8_t reg = read8(LTR568_PS_LED_REG);
     reg = (reg & ~PS_LED_CURRENT_MASK) | (current & PS_LED_CURRENT_MASK);
     write_register(LTR568_PS_LED_REG, reg);
-    log_d("[LTR568] PS LED current=0x%02X", current);
 }
 
 /**
@@ -306,7 +265,6 @@ void ProximityAL::setPSledPulseWidth(uint8_t width)
     uint8_t reg = read8(LTR568_PS_LED_REG);
     reg = (reg & ~PS_LED_PULSE_WIDTH_MASK) | (width & PS_LED_PULSE_WIDTH_MASK);
     write_register(LTR568_PS_LED_REG, reg);
-    log_d("[LTR568] PS LED pulse width=0x%02X", width);
 }
 
 /**
@@ -318,7 +276,6 @@ void ProximityAL::setPSledDutyCycle(uint8_t dutyCycle)
     uint8_t reg = read8(LTR568_PS_LED_REG);
     reg = (reg & ~PS_LED_DUTY_MASK) | (dutyCycle & PS_LED_DUTY_MASK);
     write_register(LTR568_PS_LED_REG, reg);
-    log_d("[LTR568] PS LED duty=0x%02X", dutyCycle);
 }
 
 /**
@@ -330,7 +287,6 @@ void ProximityAL::setPSledPulseCount(uint8_t count)
     uint8_t reg = read8(LTR568_PS_N_PULSES_REG);
     reg = (reg & ~PS_PULSE_COUNT_MASK) | (count & PS_PULSE_COUNT_MASK);
     write_register(LTR568_PS_N_PULSES_REG, reg);
-    log_d("[LTR568] PS pulse count=%u (=%u pulses)", count, count + 1);
 }
 
 /**
@@ -342,7 +298,6 @@ void ProximityAL::setPSaverageFactor(uint8_t factor)
     uint8_t reg = read8(LTR568_PS_N_PULSES_REG);
     reg = (reg & ~PS_AVG_MASK) | (factor & PS_AVG_MASK);
     write_register(LTR568_PS_N_PULSES_REG, reg);
-    log_d("[LTR568] PS averaging=0x%02X", factor);
 }
 
 /**
@@ -352,7 +307,6 @@ void ProximityAL::setPSaverageFactor(uint8_t factor)
 void ProximityAL::setPSmeasurementRate(uint8_t measRate)
 {
     write_register(LTR568_PS_MEAS_RATE_REG, measRate & PS_MEAS_RATE_MASK);
-    log_d("[LTR568] PS meas rate=0x%02X", measRate);
 }
 
 /**
@@ -365,7 +319,6 @@ void ProximityAL::setPS16bitMode(bool enable)
     reg = (reg & ~PS_16BIT_MASK) | (enable ? PS_16BIT_EN : 0x00);
     reg |= PS_CONTR_RSVD_BIT4;
     write_register(LTR568_PS_CONTR_REG, reg);
-    log_d("[LTR568] PS %d-bit mode", enable ? 16 : 11);
 }
 
 /**
@@ -378,7 +331,6 @@ void ProximityAL::setPSoffsetSubtraction(bool enable)
     reg = (reg & ~PS_OFFSET_MASK) | (enable ? PS_OFFSET_EN : 0x00);
     reg |= PS_CONTR_RSVD_BIT4;
     write_register(LTR568_PS_CONTR_REG, reg);
-    log_d("[LTR568] PS offset subtraction %s", enable ? "enabled" : "disabled");
 }
 
 /**
@@ -390,7 +342,6 @@ void ProximityAL::setPScrosstalk(uint16_t offset)
 {
     write_register(LTR568_PXTALK_LSB_REG, (uint8_t)(offset & 0xFF));
     write_register(LTR568_PXTALK_MSB_REG, (uint8_t)((offset >> 8) & 0xFF));
-    log_d("[LTR568] PS crosstalk offset=%u", offset);
 }
 
 /**
@@ -400,7 +351,6 @@ void ProximityAL::setPScrosstalk(uint16_t offset)
 void ProximityAL::setPSvrehl(uint8_t value)
 {
     write_register(LTR568_PS_VREHL_REG, value);
-    log_d("[LTR568] PS_VREHL=0x%02X", value);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════ */
@@ -415,12 +365,11 @@ void ProximityAL::setPSvrehl(uint8_t value)
 void ProximityAL::setInterrupt(bool enable, bool activeHigh)
 {
     uint8_t reg = INT_BASE; /* reserved bit3=1 */
-    if (enable)    reg |= INT_MODE_PS_TRIGGER;
-    if (activeHigh) reg |= INT_POLARITY_HIGH;
+    if (enable)
+        reg |= INT_MODE_PS_TRIGGER;
+    if (activeHigh)
+        reg |= INT_POLARITY_HIGH;
     write_register(LTR568_INTERRUPT_REG, reg);
-    log_d("[LTR568] interrupt %s, polarity=%s",
-          enable ? "enabled" : "disabled",
-          activeHigh ? "HIGH" : "LOW");
 }
 
 /**
@@ -430,7 +379,6 @@ void ProximityAL::setInterrupt(bool enable, bool activeHigh)
 void ProximityAL::setInterruptPersist(uint8_t count)
 {
     write_register(LTR568_INT_PERSIST_REG, (count << 4) & INT_PERSIST_MASK);
-    log_d("[LTR568] interrupt persist=%u", count);
 }
 
 /**
@@ -441,7 +389,6 @@ void ProximityAL::setPSthresholdHigh(uint16_t threshold)
 {
     write_register(LTR568_PS_THRES_HI_LSB_REG, (uint8_t)(threshold & 0xFF));
     write_register(LTR568_PS_THRES_HI_MSB_REG, (uint8_t)((threshold >> 8) & 0xFF));
-    log_d("[LTR568] PS threshold high=%u", threshold);
 }
 
 /**
@@ -451,7 +398,6 @@ void ProximityAL::setPSthresholdLow(uint16_t threshold)
 {
     write_register(LTR568_PS_THRES_LO_LSB_REG, (uint8_t)(threshold & 0xFF));
     write_register(LTR568_PS_THRES_LO_MSB_REG, (uint8_t)((threshold >> 8) & 0xFF));
-    log_d("[LTR568] PS threshold low=%u", threshold);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════ */
@@ -552,7 +498,7 @@ float ProximityAL::getLuxValue(void)
     /* Bit 6: 0=valid, 1=invalid */
     if (status & ALS_DATA_VALID_MASK)
     {
-        log_d("[LTR568] ALS data invalid (status=0x%02X)", status);
+
         return -1.0f;
     }
 
@@ -586,7 +532,6 @@ float ProximityAL::getLuxValue(void)
 void ProximityAL::setWindowFactor(float factor)
 {
     _windowFactor = factor;
-    log_d("[LTR568] window factor=%.2f", factor);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════ */
