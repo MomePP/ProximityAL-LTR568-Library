@@ -78,43 +78,43 @@ bool LTR568::begin(void)
          *   DATASHEET CONFLICT §7.20: field table → 0x06, pseudo-code → 0x05.
          *   Using 0x06 per field table (≈50 klux threshold).
          */
-        write_register(LTR568_PS_VREHL_REG, PS_VREHL_RECOMMENDED);
+        write_register(LTR568_PS_VREHL_REG, LTR568_PS_VREHL_RECOMMENDED);
 
         /* Step 6 — PS LED: 100% duty, 16 µs pulse width, 100 mA
          *   Reduced from 190 mA / 32 µs to lower power and faster acquisition.
          *   100 mA at 16 µs is sufficient for close-range (~5 cm) detection.
          */
         write_register(LTR568_PS_LED_REG,
-                       PS_LED_DUTY_100PCT | PS_LED_PULSE_WIDTH_16US | PS_LED_CURRENT_100MA);
+                       LTR568_PS_LED_DUTY_100PCT | LTR568_PS_LED_PULSE_WIDTH_16US | LTR568_PS_LED_CURRENT_100MA);
 
         /* Step 7 — PS pulses: 8 pulses (reg value 0x07), no averaging
          *   Datasheet §7.6: pulse count 0x00=1 .. 0x1F=32.
          *   8 pulses balances SNR vs acquisition speed.
          */
-        write_register(LTR568_PS_N_PULSES_REG, PS_AVG_NONE | 0x07);
+        write_register(LTR568_PS_N_PULSES_REG, LTR568_PS_AVG_NONE | 0x07);
 
         /* Step 8 — PS measurement rate: 50 ms
          *   Firmware polls every 100 ms — 50 ms ensures a fresh reading each cycle.
          */
-        write_register(LTR568_PS_MEAS_RATE_REG, PS_MEAS_RATE_50MS);
+        write_register(LTR568_PS_MEAS_RATE_REG, LTR568_PS_MEAS_RATE_50MS);
 
         /* Step 9 — ALS: integration time 100 ms, meas rate 400 ms (default 0x06)
          *   Upper nibble = 0x0 per datasheet pseudo-code (NOT 0xA0).
          */
-        write_register(LTR568_ALS_INT_TIME_REG, ALS_INT_TIME_100MS | ALS_MEAS_RATE_400MS);
+        write_register(LTR568_ALS_INT_TIME_REG, LTR568_ALS_INT_TIME_100MS | LTR568_ALS_MEAS_RATE_400MS);
 
         /* Step 17 — Activate ALS LAST
          *   IR enabled, 16-bit resolution, gain 1×, active mode.
          *   Default reset = 0x20 (IR_EN=1, standby).  We just add ACTIVE.
          */
         write_register(LTR568_ALS_CONTR_REG,
-                       ALS_DR_16BIT | ALS_IR_ENABLE | ALS_GAIN_1X | ALS_ACTIVE_MODE);
+                       LTR568_ALS_DR_16BIT | LTR568_ALS_IR_ENABLE | LTR568_ALS_GAIN_1X | LTR568_ALS_ACTIVE_MODE);
 
         /* Step 18 — Activate PS LAST
          *   Reserved bit4 MUST be 1.
          */
         write_register(LTR568_PS_CONTR_REG,
-                       PS_CONTR_RSVD_BIT4 | PS_ACTIVE_MODE);
+                       LTR568_PS_CONTR_RSVD_BIT4 | LTR568_PS_ACTIVE_MODE);
 
         /* Wait for first measurement to become available (§4.3: 5–10 ms) */
         delay(10);
@@ -132,7 +132,7 @@ bool LTR568::begin(void)
 
 void LTR568::softwareReset(void)
 {
-    write_register(LTR568_PS_CONTR_REG, PS_CONTR_RSVD_BIT4 | PS_SW_RESET);
+    write_register(LTR568_PS_CONTR_REG, LTR568_PS_CONTR_RSVD_BIT4 | LTR568_PS_SW_RESET);
     delay(10);
 }
 
@@ -142,43 +142,43 @@ void LTR568::softwareReset(void)
 
 /**
  * @brief  Set ALS operating mode.
- * @param  mode  ALS_ACTIVE_MODE or ALS_STANDBY_MODE
+ * @param  mode  LTR568_ALS_ACTIVE_MODE or LTR568_ALS_STANDBY_MODE
  */
 void LTR568::setALSmode(uint8_t mode)
 {
     uint8_t reg = read8(LTR568_ALS_CONTR_REG);
-    reg = (reg & ~ALS_MODE_MASK) | (mode & ALS_MODE_MASK);
+    reg = (reg & ~LTR568_ALS_MODE_MASK) | (mode & LTR568_ALS_MODE_MASK);
     write_register(LTR568_ALS_CONTR_REG, reg);
 }
 
 /**
  * @brief  Set ALS gain.
- * @param  gain  One of ALS_GAIN_1X .. ALS_GAIN_512X (pre-shifted).
+ * @param  gain  One of LTR568_ALS_GAIN_1X .. LTR568_ALS_GAIN_512X (pre-shifted).
  */
 void LTR568::setALSgain(uint8_t gain)
 {
     uint8_t reg = read8(LTR568_ALS_CONTR_REG);
-    reg = (reg & ~ALS_GAIN_MASK) | (gain & ALS_GAIN_MASK);
+    reg = (reg & ~LTR568_ALS_GAIN_MASK) | (gain & LTR568_ALS_GAIN_MASK);
     write_register(LTR568_ALS_CONTR_REG, reg);
 }
 
 /**
  * @brief  Read configured ALS gain from ALS_CONTR register.
- * @retval Pre-shifted gain field (ALS_GAIN_1X .. ALS_GAIN_512X).
+ * @retval Pre-shifted gain field (LTR568_ALS_GAIN_1X .. LTR568_ALS_GAIN_512X).
  */
 uint8_t LTR568::getALSgain(void)
 {
-    return read8(LTR568_ALS_CONTR_REG) & ALS_GAIN_MASK;
+    return read8(LTR568_ALS_CONTR_REG) & LTR568_ALS_GAIN_MASK;
 }
 
 /**
  * @brief  Set ALS ADC resolution.
- * @param  resolution  ALS_DR_16BIT .. ALS_DR_13BIT (pre-shifted).
+ * @param  resolution  LTR568_ALS_DR_16BIT .. LTR568_ALS_DR_13BIT (pre-shifted).
  */
 void LTR568::setALSresolution(uint8_t resolution)
 {
     uint8_t reg = read8(LTR568_ALS_CONTR_REG);
-    reg = (reg & ~ALS_DR_MASK) | (resolution & ALS_DR_MASK);
+    reg = (reg & ~LTR568_ALS_DR_MASK) | (resolution & LTR568_ALS_DR_MASK);
     write_register(LTR568_ALS_CONTR_REG, reg);
 }
 
@@ -189,20 +189,20 @@ void LTR568::setALSresolution(uint8_t resolution)
 void LTR568::setIRenable(bool enable)
 {
     uint8_t reg = read8(LTR568_ALS_CONTR_REG);
-    reg = (reg & ~ALS_IR_EN_MASK) | (enable ? ALS_IR_ENABLE : ALS_IR_DISABLE);
+    reg = (reg & ~LTR568_ALS_IR_EN_MASK) | (enable ? LTR568_ALS_IR_ENABLE : LTR568_ALS_IR_DISABLE);
     write_register(LTR568_ALS_CONTR_REG, reg);
 }
 
 /**
  * @brief  Set ALS integration time.
- * @param  intTime  One of ALS_INT_TIME_50MS .. ALS_INT_TIME_400MS (pre-shifted).
+ * @param  intTime  One of LTR568_ALS_INT_TIME_50MS .. LTR568_ALS_INT_TIME_400MS (pre-shifted).
  * @note   Upper nibble forced to 0x0 per datasheet pseudo-code.
  *         ALS meas rate auto-corrects if set below integration time.
  */
 void LTR568::setALSintegrationTime(uint8_t intTime)
 {
     uint8_t reg = read8(LTR568_ALS_INT_TIME_REG);
-    reg = (reg & ~ALS_INT_TIME_MASK) | (intTime & ALS_INT_TIME_MASK);
+    reg = (reg & ~LTR568_ALS_INT_TIME_MASK) | (intTime & LTR568_ALS_INT_TIME_MASK);
     reg &= 0x0F; /* upper nibble must be 0x0 per pseudo-code */
     write_register(LTR568_ALS_INT_TIME_REG, reg);
 }
@@ -213,70 +213,70 @@ void LTR568::setALSintegrationTime(uint8_t intTime)
  */
 uint8_t LTR568::getALSintegrationTime(void)
 {
-    return read8(LTR568_ALS_INT_TIME_REG) & ALS_INT_TIME_MASK;
+    return read8(LTR568_ALS_INT_TIME_REG) & LTR568_ALS_INT_TIME_MASK;
 }
 
 /**
  * @brief  Set ALS measurement repeat rate.
- * @param  measRate  One of ALS_MEAS_RATE_100MS .. ALS_MEAS_RATE_800MS.
+ * @param  measRate  One of LTR568_ALS_MEAS_RATE_100MS .. LTR568_ALS_MEAS_RATE_800MS.
  * @note   Must be ≥ integration time; IC auto-corrects if smaller.
  */
 void LTR568::setALSmeasurementRate(uint8_t measRate)
 {
     uint8_t reg = read8(LTR568_ALS_INT_TIME_REG);
-    reg = (reg & ~ALS_MEAS_RATE_MASK) | (measRate & ALS_MEAS_RATE_MASK);
+    reg = (reg & ~LTR568_ALS_MEAS_RATE_MASK) | (measRate & LTR568_ALS_MEAS_RATE_MASK);
     reg &= 0x0F; /* upper nibble must be 0x0 per pseudo-code */
     write_register(LTR568_ALS_INT_TIME_REG, reg);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════ */
 /* PS Configuration                                                       */
-/*   IMPORTANT: every write to PS_CONTR must OR with PS_CONTR_RSVD_BIT4  */
-/*   (bit 4 must always be 1).                                            */
+/*   IMPORTANT: every write to PS_CONTR must OR with                      */
+/*   LTR568_PS_CONTR_RSVD_BIT4 (bit 4 must always be 1).                 */
 /* ═══════════════════════════════════════════════════════════════════════ */
 
 /**
  * @brief  Set PS operating mode.
- * @param  mode  PS_ACTIVE_MODE or PS_STANDBY_MODE (pre-shifted to bit 1).
+ * @param  mode  LTR568_PS_ACTIVE_MODE or LTR568_PS_STANDBY_MODE (pre-shifted to bit 1).
  */
 void LTR568::setPSmode(uint8_t mode)
 {
     uint8_t reg = read8(LTR568_PS_CONTR_REG);
-    reg = (reg & ~PS_MODE_MASK) | (mode & PS_MODE_MASK);
-    reg |= PS_CONTR_RSVD_BIT4;
+    reg = (reg & ~LTR568_PS_MODE_MASK) | (mode & LTR568_PS_MODE_MASK);
+    reg |= LTR568_PS_CONTR_RSVD_BIT4;
     write_register(LTR568_PS_CONTR_REG, reg);
 }
 
 /**
  * @brief  Set PS LED peak current.
- * @param  current  PS_LED_CURRENT_0MA .. PS_LED_CURRENT_240MA.
+ * @param  current  LTR568_PS_LED_CURRENT_0MA .. LTR568_PS_LED_CURRENT_240MA.
  */
 void LTR568::setPSledCurrent(uint8_t current)
 {
     uint8_t reg = read8(LTR568_PS_LED_REG);
-    reg = (reg & ~PS_LED_CURRENT_MASK) | (current & PS_LED_CURRENT_MASK);
+    reg = (reg & ~LTR568_PS_LED_CURRENT_MASK) | (current & LTR568_PS_LED_CURRENT_MASK);
     write_register(LTR568_PS_LED_REG, reg);
 }
 
 /**
  * @brief  Set PS LED pulse width.
- * @param  width  PS_LED_PULSE_WIDTH_4US .. PS_LED_PULSE_WIDTH_32US (pre-shifted).
+ * @param  width  LTR568_PS_LED_PULSE_WIDTH_4US .. LTR568_PS_LED_PULSE_WIDTH_32US (pre-shifted).
  */
 void LTR568::setPSledPulseWidth(uint8_t width)
 {
     uint8_t reg = read8(LTR568_PS_LED_REG);
-    reg = (reg & ~PS_LED_PULSE_WIDTH_MASK) | (width & PS_LED_PULSE_WIDTH_MASK);
+    reg = (reg & ~LTR568_PS_LED_PULSE_WIDTH_MASK) | (width & LTR568_PS_LED_PULSE_WIDTH_MASK);
     write_register(LTR568_PS_LED_REG, reg);
 }
 
 /**
  * @brief  Set PS LED duty cycle.
- * @param  dutyCycle  PS_LED_DUTY_12_5PCT .. PS_LED_DUTY_100PCT (pre-shifted).
+ * @param  dutyCycle  LTR568_PS_LED_DUTY_12_5PCT .. LTR568_PS_LED_DUTY_100PCT (pre-shifted).
  */
 void LTR568::setPSledDutyCycle(uint8_t dutyCycle)
 {
     uint8_t reg = read8(LTR568_PS_LED_REG);
-    reg = (reg & ~PS_LED_DUTY_MASK) | (dutyCycle & PS_LED_DUTY_MASK);
+    reg = (reg & ~LTR568_PS_LED_DUTY_MASK) | (dutyCycle & LTR568_PS_LED_DUTY_MASK);
     write_register(LTR568_PS_LED_REG, reg);
 }
 
@@ -287,28 +287,28 @@ void LTR568::setPSledDutyCycle(uint8_t dutyCycle)
 void LTR568::setPSledPulseCount(uint8_t count)
 {
     uint8_t reg = read8(LTR568_PS_N_PULSES_REG);
-    reg = (reg & ~PS_PULSE_COUNT_MASK) | (count & PS_PULSE_COUNT_MASK);
+    reg = (reg & ~LTR568_PS_PULSE_COUNT_MASK) | (count & LTR568_PS_PULSE_COUNT_MASK);
     write_register(LTR568_PS_N_PULSES_REG, reg);
 }
 
 /**
  * @brief  Set PS digital averaging factor.
- * @param  factor  PS_AVG_NONE, PS_AVG_2X, PS_AVG_4X, or PS_AVG_8X (pre-shifted).
+ * @param  factor  LTR568_PS_AVG_NONE, LTR568_PS_AVG_2X, LTR568_PS_AVG_4X, or LTR568_PS_AVG_8X (pre-shifted).
  */
 void LTR568::setPSaverageFactor(uint8_t factor)
 {
     uint8_t reg = read8(LTR568_PS_N_PULSES_REG);
-    reg = (reg & ~PS_AVG_MASK) | (factor & PS_AVG_MASK);
+    reg = (reg & ~LTR568_PS_AVG_MASK) | (factor & LTR568_PS_AVG_MASK);
     write_register(LTR568_PS_N_PULSES_REG, reg);
 }
 
 /**
  * @brief  Set PS measurement repeat rate.
- * @param  measRate  PS_MEAS_RATE_6_125MS .. PS_MEAS_RATE_800MS.
+ * @param  measRate  LTR568_PS_MEAS_RATE_6_125MS .. LTR568_PS_MEAS_RATE_800MS.
  */
 void LTR568::setPSmeasurementRate(uint8_t measRate)
 {
-    write_register(LTR568_PS_MEAS_RATE_REG, measRate & PS_MEAS_RATE_MASK);
+    write_register(LTR568_PS_MEAS_RATE_REG, measRate & LTR568_PS_MEAS_RATE_MASK);
 }
 
 /**
@@ -318,8 +318,8 @@ void LTR568::setPSmeasurementRate(uint8_t measRate)
 void LTR568::setPS16bitMode(bool enable)
 {
     uint8_t reg = read8(LTR568_PS_CONTR_REG);
-    reg = (reg & ~PS_16BIT_MASK) | (enable ? PS_16BIT_EN : 0x00);
-    reg |= PS_CONTR_RSVD_BIT4;
+    reg = (reg & ~LTR568_PS_16BIT_MASK) | (enable ? LTR568_PS_16BIT_EN : 0x00);
+    reg |= LTR568_PS_CONTR_RSVD_BIT4;
     write_register(LTR568_PS_CONTR_REG, reg);
 }
 
@@ -330,8 +330,8 @@ void LTR568::setPS16bitMode(bool enable)
 void LTR568::setPSoffsetSubtraction(bool enable)
 {
     uint8_t reg = read8(LTR568_PS_CONTR_REG);
-    reg = (reg & ~PS_OFFSET_MASK) | (enable ? PS_OFFSET_EN : 0x00);
-    reg |= PS_CONTR_RSVD_BIT4;
+    reg = (reg & ~LTR568_PS_OFFSET_MASK) | (enable ? LTR568_PS_OFFSET_EN : 0x00);
+    reg |= LTR568_PS_CONTR_RSVD_BIT4;
     write_register(LTR568_PS_CONTR_REG, reg);
 }
 
@@ -366,11 +366,11 @@ void LTR568::setPSvrehl(uint8_t value)
  */
 void LTR568::setInterrupt(bool enable, bool activeHigh)
 {
-    uint8_t reg = INT_BASE; /* reserved bit3=1 */
+    uint8_t reg = LTR568_INT_BASE; /* reserved bit3=1 */
     if (enable)
-        reg |= INT_MODE_PS_TRIGGER;
+        reg |= LTR568_INT_MODE_PS_TRIGGER;
     if (activeHigh)
-        reg |= INT_POLARITY_HIGH;
+        reg |= LTR568_INT_POLARITY_HIGH;
     write_register(LTR568_INTERRUPT_REG, reg);
 }
 
@@ -380,7 +380,7 @@ void LTR568::setInterrupt(bool enable, bool activeHigh)
  */
 void LTR568::setInterruptPersist(uint8_t count)
 {
-    write_register(LTR568_INT_PERSIST_REG, (count << 4) & INT_PERSIST_MASK);
+    write_register(LTR568_INT_PERSIST_REG, (count << 4) & LTR568_INT_PERSIST_MASK);
 }
 
 /**
@@ -412,7 +412,7 @@ void LTR568::setPSthresholdLow(uint16_t threshold)
  */
 uint8_t LTR568::getPartNumberID(void)
 {
-    return (read8(LTR568_PART_ID_REG) & PART_NUMBER_ID_MASK) >> 4;
+    return (read8(LTR568_PART_ID_REG) & LTR568_PART_NUMBER_ID_MASK) >> 4;
 }
 
 /**
@@ -421,7 +421,7 @@ uint8_t LTR568::getPartNumberID(void)
  */
 uint8_t LTR568::getRevisionID(void)
 {
-    return read8(LTR568_PART_ID_REG) & REVISION_ID_MASK;
+    return read8(LTR568_PART_ID_REG) & LTR568_REVISION_ID_MASK;
 }
 
 /**
@@ -498,21 +498,21 @@ float LTR568::getLuxValue(void)
     uint8_t status = read8(LTR568_ALS_STATUS_REG);
 
     /* Bit 6: 0=valid, 1=invalid */
-    if (status & ALS_DATA_VALID_MASK)
+    if (status & LTR568_ALS_DATA_VALID_MASK)
     {
 
         return -1.0f;
     }
 
     /* Gain from ALS_STATUS bits[5:3] — this is the actual gain the IC used */
-    uint8_t gainIdx = (status & ALS_DATA_GAIN_MASK) >> ALS_DATA_GAIN_SHIFT;
+    uint8_t gainIdx = (status & LTR568_ALS_DATA_GAIN_MASK) >> LTR568_ALS_DATA_GAIN_SHIFT;
     float gain = (gainIdx < sizeof(_gainLUT) / sizeof(_gainLUT[0]))
                      ? (float)_gainLUT[gainIdx]
                      : 1.0f;
 
     /* Integration time from ALS_INT_TIME bits[3:2] */
     uint8_t intTimeReg = read8(LTR568_ALS_INT_TIME_REG);
-    uint8_t intIdx = (intTimeReg & ALS_INT_TIME_MASK) >> 2;
+    uint8_t intIdx = (intTimeReg & LTR568_ALS_INT_TIME_MASK) >> 2;
     float intFactor = (intIdx < sizeof(_intTimeLUT) / sizeof(_intTimeLUT[0]))
                           ? _intTimeLUT[intIdx]
                           : 1.0f;
@@ -546,7 +546,7 @@ void LTR568::setWindowFactor(float factor)
  */
 bool LTR568::isALSdataNew(void)
 {
-    return (read8(LTR568_ALS_STATUS_REG) & ALS_DATA_STATUS_MASK) != 0;
+    return (read8(LTR568_ALS_STATUS_REG) & LTR568_ALS_DATA_STATUS_MASK) != 0;
 }
 
 /**
@@ -556,7 +556,7 @@ bool LTR568::isALSdataNew(void)
 bool LTR568::isALSdataValid(void)
 {
     /* Bit 6: 0 = valid, 1 = invalid → invert for bool semantics */
-    return (read8(LTR568_ALS_STATUS_REG) & ALS_DATA_VALID_MASK) == 0;
+    return (read8(LTR568_ALS_STATUS_REG) & LTR568_ALS_DATA_VALID_MASK) == 0;
 }
 
 /**
@@ -565,7 +565,7 @@ bool LTR568::isALSdataValid(void)
  */
 bool LTR568::isPSdataNew(void)
 {
-    return (read8(LTR568_PS_STATUS_REG) & PS_DATA_STATUS_MASK) != 0;
+    return (read8(LTR568_PS_STATUS_REG) & LTR568_PS_DATA_STATUS_MASK) != 0;
 }
 
 /**
@@ -574,13 +574,14 @@ bool LTR568::isPSdataNew(void)
  */
 uint8_t LTR568::getALSstatusGain(void)
 {
-    return (read8(LTR568_ALS_STATUS_REG) & ALS_DATA_GAIN_MASK) >> ALS_DATA_GAIN_SHIFT;
+    return (read8(LTR568_ALS_STATUS_REG) & LTR568_ALS_DATA_GAIN_MASK) >> LTR568_ALS_DATA_GAIN_SHIFT;
 }
 
 /**
  * @brief  Read raw PS_STATUS register.
- * @retval Raw byte — use PS_FTN_MASK, PS_NTF_MASK, PS_AMB_SAT_MASK,
- *         PS_INT_STATUS_MASK, PS_DATA_STATUS_MASK to decode.
+ * @retval Raw byte — use LTR568_PS_FTN_MASK, LTR568_PS_NTF_MASK,
+ *         LTR568_PS_AMB_SAT_MASK, LTR568_PS_INT_STATUS_MASK,
+ *         LTR568_PS_DATA_STATUS_MASK to decode.
  */
 uint8_t LTR568::getPSstatus(void)
 {
