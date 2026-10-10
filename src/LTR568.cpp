@@ -69,8 +69,8 @@ bool LTR568::begin(void)
         delay(10);
 
         /* Steps 3–4 — read identity registers (triggers internal latch) */
-        read8(LTR568_PART_ID_REG);
-        read8(LTR568_MANUFAC_ID_REG);
+        uint8_t ids[LTR568_ID_BLOCK_LEN];
+        readRegisters(LTR568_PART_ID_REG, LTR568_ID_BLOCK_LEN, ids);
 
         /* ── Configure ALL registers BEFORE activating modes ────────── */
 
@@ -101,7 +101,7 @@ bool LTR568::begin(void)
         /* Step 9 — ALS: integration time 100 ms, meas rate 400 ms (default 0x06)
          *   Upper nibble = 0x0 per datasheet pseudo-code (NOT 0xA0).
          */
-        write_register(LTR568_ALS_INT_TIME_REG, LTR568_ALS_INT_TIME_100MS | LTR568_ALS_MEAS_RATE_400MS);
+        writeALSintTimeReg(LTR568_ALS_INT_TIME_100MS | LTR568_ALS_MEAS_RATE_400MS);
 
         /* Step 17 — Activate ALS LAST
          *   IR enabled, 16-bit resolution, gain 1×, active mode.
@@ -133,6 +133,7 @@ bool LTR568::begin(void)
 void LTR568::softwareReset(void)
 {
     write_register(LTR568_PS_CONTR_REG, LTR568_PS_CONTR_RSVD_BIT4 | LTR568_PS_SW_RESET);
+    _alsIntTimeReg = LTR568_ALS_INT_TIME_RESET;
     delay(10);
 }
 
@@ -201,10 +202,10 @@ void LTR568::setIRenable(bool enable)
  */
 void LTR568::setALSintegrationTime(uint8_t intTime)
 {
-    uint8_t reg = read8(LTR568_ALS_INT_TIME_REG);
+    uint8_t reg = _alsIntTimeReg;
     reg = (reg & ~LTR568_ALS_INT_TIME_MASK) | (intTime & LTR568_ALS_INT_TIME_MASK);
     reg &= 0x0F; /* upper nibble must be 0x0 per pseudo-code */
-    write_register(LTR568_ALS_INT_TIME_REG, reg);
+    writeALSintTimeReg(reg);
 }
 
 /**
@@ -223,10 +224,10 @@ uint8_t LTR568::getALSintegrationTime(void)
  */
 void LTR568::setALSmeasurementRate(uint8_t measRate)
 {
-    uint8_t reg = read8(LTR568_ALS_INT_TIME_REG);
+    uint8_t reg = _alsIntTimeReg;
     reg = (reg & ~LTR568_ALS_MEAS_RATE_MASK) | (measRate & LTR568_ALS_MEAS_RATE_MASK);
     reg &= 0x0F; /* upper nibble must be 0x0 per pseudo-code */
-    write_register(LTR568_ALS_INT_TIME_REG, reg);
+    writeALSintTimeReg(reg);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════ */
@@ -448,8 +449,8 @@ uint8_t LTR568::getManufacturerID(void)
  */
 uint16_t LTR568::getPSvalue(void)
 {
-    uint8_t buffer[2];
-    read_register(LTR568_PS_DATA_LSB_REG, 2, &buffer[0]);
+    uint8_t buffer[2] = {0};
+    readRegisters(LTR568_PS_DATA_LSB_REG, 2, &buffer[0]);
     return ((uint16_t)buffer[1] << 8) | buffer[0];
 }
 
@@ -459,8 +460,8 @@ uint16_t LTR568::getPSvalue(void)
  */
 uint16_t LTR568::getGreenValue(void)
 {
-    uint8_t buffer[2];
-    read_register(LTR568_GREEN_DATA_LSB_REG, 2, &buffer[0]);
+    uint8_t buffer[2] = {0};
+    readRegisters(LTR568_GREEN_DATA_LSB_REG, 2, &buffer[0]);
     return ((uint16_t)buffer[1] << 8) | buffer[0];
 }
 
@@ -471,36 +472,24 @@ uint16_t LTR568::getGreenValue(void)
  */
 uint16_t LTR568::getIRvalue(void)
 {
-    uint8_t buffer[2];
-    read_register(LTR568_IR_DATA_LSB_REG, 2, &buffer[0]);
+    uint8_t buffer[2] = {0};
+    readRegisters(LTR568_IR_DATA_LSB_REG, 2, &buffer[0]);
     return ((uint16_t)buffer[1] << 8) | buffer[0];
 }
 
 /**
- * @brief  Calculate lux from ALS green channel using datasheet §8 formula.
- *
- *         Lux = (0.336 × ALS_DATA) / (GAIN × INT) × Window_Factor
- *
- *         - ALS_DATA  : raw 16-bit from GREEN_DATA (0x8B–0x8C)
- *         - GAIN      : actual gain read from ALS_STATUS[5:3] at measurement time
- *         - INT       : integration time factor {0.5, 1.0, 2.0, 4.0}
- *         - Window_Factor : 1.0 for clear glass (set via setWindowFactor())
- *
- * @retval Calculated lux value, or -1.0f if data is invalid.
- *
- * @note   Unlike LTR-553 which uses a ratio-based dual-channel formula
- *         (CH0 + CH1), the LTR-568 uses only the green channel with a
- *         single coefficient.
- */
+ * @brief  Lux from one 5-byte burst of ALS_STATUS..GREEN_MSB (0x88..0x8C) and the
+ *         cached ALS_INT_TIME. Returns -1.0f when ALS_STATUS flags the data invalid.
+ **/
 float LTR568::getLuxValue(void)
 {
-    /* Read ALS_STATUS to check validity and get actual gain */
-    uint8_t status = read8(LTR568_ALS_STATUS_REG);
+    uint8_t block[LTR568_ALS_BLOCK_LEN] = {0};
+    readRegisters(LTR568_ALS_STATUS_REG, LTR568_ALS_BLOCK_LEN, block);
+    const uint8_t status = block[LTR568_ALS_BLOCK_STATUS_IDX];
 
     /* Bit 6: 0=valid, 1=invalid */
     if (status & LTR568_ALS_DATA_VALID_MASK)
     {
-
         return -1.0f;
     }
 
@@ -511,19 +500,44 @@ float LTR568::getLuxValue(void)
                      : 1.0f;
 
     /* Integration time from ALS_INT_TIME bits[3:2] */
-    uint8_t intTimeReg = read8(LTR568_ALS_INT_TIME_REG);
-    uint8_t intIdx = (intTimeReg & LTR568_ALS_INT_TIME_MASK) >> 2;
+    uint8_t intIdx = (_alsIntTimeReg & LTR568_ALS_INT_TIME_MASK) >> 2;
     float intFactor = (intIdx < sizeof(_intTimeLUT) / sizeof(_intTimeLUT[0]))
                           ? _intTimeLUT[intIdx]
                           : 1.0f;
 
-    /* Read green (visible) channel */
-    uint16_t alsData = getGreenValue();
+    uint16_t alsData = ((uint16_t)block[LTR568_ALS_BLOCK_GREEN_MSB_IDX] << 8) | block[LTR568_ALS_BLOCK_GREEN_LSB_IDX];
 
     /* Lux = (0.336 × ALS_DATA) / (GAIN × INT) × Window_Factor */
     float lux = (LTR568_LUX_COEFF * (float)alsData / (gain * intFactor)) * _windowFactor;
 
     return lux;
+}
+
+/**
+ * @brief  Write ALS_INT_TIME and keep the shadow copy in sync.
+ **/
+void LTR568::writeALSintTimeReg(uint8_t value)
+{
+    write_register(LTR568_ALS_INT_TIME_REG, value);
+    _alsIntTimeReg = value;
+}
+
+/**
+ * @brief  Register-pointer write + data read as one repeated-START transaction
+ *         (one driver call instead of two). Same semantics as I2CDevice::read_register
+ *         but drains the receive buffer with Wire.read() instead of Stream::readBytes(),
+ *         which polls millis() per byte and blocks up to 1 s on a short read.
+ **/
+size_t LTR568::readRegisters(uint8_t reg_addr, size_t length, uint8_t *data)
+{
+    Wire.beginTransmission(_address);
+    Wire.write(reg_addr);
+    Wire.endTransmission(false);
+
+    const size_t receivedBytes = Wire.requestFrom(_address, length);
+    for (size_t i = 0; i < receivedBytes && i < length; i++)
+        data[i] = (uint8_t)Wire.read();
+    return receivedBytes;
 }
 
 /**

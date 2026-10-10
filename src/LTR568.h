@@ -21,6 +21,7 @@ NOTE: Where the datasheet and the reference C implementation
 #define __LTR568_H__
 
 #include "I2CUtils/i2c-register.hpp"
+#include <stddef.h>
 #include <stdint.h>
 
 /* ── I2C Address ───────────────────────────────────────────────────────── */
@@ -304,6 +305,20 @@ NOTE: Where the datasheet and the reference C implementation
 
 #define LTR568_LUX_COEFF           0.336f
 
+/* ALS block read: ALS_STATUS (0x88), IR_LSB/MSB (0x89/0x8A), GREEN_LSB/MSB (0x8B/0x8C) are
+   contiguous and the register pointer auto-increments -> one 5-byte burst gives validity,
+   gain and the green sample from the same instant. */
+#define LTR568_ALS_BLOCK_LEN       5
+#define LTR568_ALS_BLOCK_STATUS_IDX 0
+#define LTR568_ALS_BLOCK_GREEN_LSB_IDX 3
+#define LTR568_ALS_BLOCK_GREEN_MSB_IDX 4
+
+/* PART_ID (0x86) + MANUFAC_ID (0x87) are contiguous: one 2-byte read in begin() */
+#define LTR568_ID_BLOCK_LEN        2
+
+/* ALS_INT_TIME reset default (0x85), cached value after softwareReset() */
+#define LTR568_ALS_INT_TIME_RESET  0x06
+
 /* ═══════════════════════════════════════════════════════════════════════ */
 /* PS_VREHL (0xB6) — sunlight fail-safe                                   */
 /*                                                                        */
@@ -411,8 +426,14 @@ public:
     uint16_t getALSCH1value(void) { return getIRvalue(); }
 
 private:
+    size_t readRegisters(uint8_t reg_addr, size_t length, uint8_t *data);
+    void writeALSintTimeReg(uint8_t value);
+
     uint8_t _address;
     float _windowFactor;
+    /* Shadow of ALS_INT_TIME (0x85): written only by this class, so lux reads and
+       read-modify-write setters never need to read it back over I2C. */
+    uint8_t _alsIntTimeReg = LTR568_ALS_INT_TIME_RESET;
 };
 
 #endif /* __LTR568_H__ */
